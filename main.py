@@ -137,6 +137,12 @@ def generateStatusFromDebt(debt_obj):
 		apr_interest_rate = (12 / termLengthInAmortizationUnits) * principal_interest_rate;
 	elif (amortizationUnitType == AMORTIZATION_YEAR): # Years
 		apr_interest_rate = (1 / termLengthInAmortizationUnits) * principal_interest_rate;
+
+	# determine the total repay amount
+	apr_interest_rate = round(apr_interest_rate, 2);
+	principal_interest_rate = round(principal_interest_rate, 2)
+
+	total_repay_amount = principal_amount + (principal_amount * (principal_interest_rate / 100));
 	
 	# TODO get price for collateral and estimate
 
@@ -153,13 +159,6 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append(principal_symbol);
 	string_builder.append("\n");
 
-	# APR
-	string_builder.append("📈 ");
-	string_builder.append(str(round(principal_interest_rate, 2)));
-	string_builder.append("% interest (");
-	string_builder.append(str(round(apr_interest_rate, 2)));
-	string_builder.append("% APR)\n");
-
 	# Duration
 	string_builder.append("⏳ ");
 	string_builder.append(str(termLengthInAmortizationUnits));
@@ -167,6 +166,14 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append(AMORTIZATION_UNITS[amortizationUnitType]);
 	if (termLengthInAmortizationUnits > 1):
 		string_builder.append("s");
+	string_builder.append("\n");
+
+	# APR
+	string_builder.append("📈 ");
+	string_builder.append(str(principal_interest_rate));
+	string_builder.append("% interest (");
+	string_builder.append(str(apr_interest_rate));
+	string_builder.append("% APR)");
 
 
 	# AMORTIZATION_UNITS
@@ -189,7 +196,7 @@ def generateStatusFromDebt(debt_obj):
 	# Total Repay
 	string_builder.append("Total Repay:\n");
 	string_builder.append("💸 ");
-	string_builder.append(str(principal_amount));
+	string_builder.append(str(total_repay_amount));
 	string_builder.append(" $");
 	string_builder.append(principal_symbol);
 	string_builder.append("\n\n");
@@ -202,8 +209,6 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append(debt_obj["id"]);
 
 	status = str.join('', string_builder)
-
-	print(principal_interest_rate);
 
 	return status;
 
@@ -307,7 +312,8 @@ def refreshdebts():
 		}
 
 		# if this debt was created after our last tweeted debt
-		if (debt_creation_seconds > last_tweeted_creation_time):
+		if (debt_id == "0x3da2e98463515ce51c585ccca0f15cd608496fac48f4ca1270c6170b679d1038"): #TODO remove
+		# if (debt_creation_seconds > last_tweeted_creation_time):
 			# check if we should tweet this one
 			if (debt_to_tweet is None):
 				debt_to_tweet = debt_obj;
@@ -340,7 +346,7 @@ def refreshdebts():
 
 		tweetStatus(status);		
 
-	scheduleRefreshTask(seconds_before_next_refresh);
+	# scheduleRefreshTask(seconds_before_next_refresh); TODO
 
 	return "{todo}";
 
