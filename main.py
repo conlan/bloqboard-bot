@@ -47,7 +47,7 @@ TOKEN_REGISTRY_ABI = json.loads('[{"constant":true,"inputs":[{"name":"_index","t
 ALLOWED_CONTRACT_TERM_TYPES = ["0x5de2538838b4eb7fa2dbdea09d642b88546e5f20"];
 
 # Dharma
-AMORTIZATION_UNITS = ["HOURS", "DAYS", "WEEKS", "MONTHS", "YEARS" ];
+AMORTIZATION_UNITS = ["Hour", "Day", "Week", "Month", "Year" ];
 
 
 # Provider
@@ -118,6 +118,10 @@ def generateStatusFromDebt(debt_obj):
 	collateral_token_symbol = collateral_token_attributes[1];
 	collateral_token_decimals = collateral_token_attributes[3];
 
+	# determine the term duration in days so we can calculate the APR
+	term_duration_in_days = 0;
+	apr_interest_rate = 50;
+
 	# TODO get price for collateral and estimate
 
 	string_builder = [];
@@ -135,11 +139,22 @@ def generateStatusFromDebt(debt_obj):
 
 	# APR
 	string_builder.append("📈 ");
-	string_builder.append("365%/Year\n");
+	string_builder.append(str(principal_interest_rate));	
+	string_builder.append("% interest (");
+	string_builder.append(str(apr_interest_rate));
+	string_builder.append("% APR)\n");
 
 	# Duration
 	string_builder.append("⏳ ");
-	string_builder.append("1 Day\n\n");
+	string_builder.append(str(termLengthInAmortizationUnits));
+	string_builder.append(" ");
+	string_builder.append(AMORTIZATION_UNITS[amortizationUnitType]);
+	if (termLengthInAmortizationUnits > 1):
+		string_builder.append("s");
+
+
+	# AMORTIZATION_UNITS
+	string_builder.append("\n\n");
 
 	# Collateral
 	if (debt_obj["kind"] == "LendOffer"):
@@ -151,8 +166,8 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append(" $");
 	string_builder.append(collateral_token_symbol);
 	string_builder.append("\n");
-	string_builder.append("⚖️ ");
-	string_builder.append(" 50");
+	string_builder.append("⚖️");
+	string_builder.append(str(debt_obj["ltv"]));
 	string_builder.append("%\n\n");
 
 	# Total Repay
@@ -171,6 +186,8 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append(debt_obj["id"]);
 
 	status = str.join('', string_builder)
+
+	print(principal_interest_rate);
 
 	return status;
 
@@ -238,7 +255,7 @@ def refreshdebts():
 
 	queued_debts_to_tweet = [];
 
-	print(debts);
+	# print(debts); TODO uncomment
 
 	for debt in debts:
 		debt_id = debt["id"];
@@ -287,7 +304,7 @@ def refreshdebts():
 	last_tweeted_obj.update({
 		"last_tweeted_creation_time" : last_tweeted_creation_time
     })
-	ds.put(last_tweeted_obj)
+	# ds.put(last_tweeted_obj)
 
 	# the time to wait before calling refreshDebts again.
 	# if we have no debt to tweet, then we can take normal time, otherwise if there's queued debts then we need to call again 

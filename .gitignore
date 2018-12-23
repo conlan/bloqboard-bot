@@ -4,3 +4,4 @@ lib
 env
 
 twitter_credentials.json
+test_local.sh
