@@ -10,6 +10,8 @@ import math
 import urllib.request
 import urllib.parse
 
+import twitter
+
 from datetime import datetime
 from datetime import timedelta
 
@@ -51,10 +53,108 @@ web3 = web3.Web3(web3.Web3.HTTPProvider(providerURL))
 
 app = Flask(__name__)
 
+def tweetStatus(status):
+	# load these from a gitignored file
+	twitter_credentials = json.loads(open("./twitter_credentials.json", "r").read());
+
+	twitter_consumer_key = twitter_credentials["twitter_consumer_key"];
+	twitter_consumer_secret = twitter_credentials["twitter_consumer_secret"];
+	twitter_access_token = twitter_credentials["twitter_access_token"];
+	twitter_token_secret = twitter_credentials["twitter_token_secret"];
+	
+	# api = twitter.Api(consumer_key=twitter_consumer_key,
+ #                  consumer_secret=twitter_consumer_secret,
+ #                  access_token_key=twitter_access_token,
+ #                  access_token_secret=twitter_token_secret)
+	# api.PostUpdate(status)
+
+def generateTweetMessageFromDebt(debt_obj):
+	debt_id = debt_obj["id"];
+	# get the terms parameters
+	terms_address = debt_obj["terms_address"];
+
+	# build the terms contract
+	terms_contract = web3.eth.contract(address=terms_address, abi=COLLATERALIZED_SIMPLE_TERMS_ABI);
+	terms_parameters = debt_obj["terms_params"];
+
+	# get the principal terms
+	terms_parameters_list = terms_contract.functions.unpackParametersFromBytes(terms_parameters).call();
+
+	principal_token_index = terms_parameters_list[0];
+	principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this
+	amortizationUnitType = terms_parameters_list[3];
+	termLengthInAmortizationUnits = terms_parameters_list[4];
+
+	# get the contract registry
+	contract_registry_address = terms_contract.functions.contractRegistry().call();
+	contract_registry_contract = web3.eth.contract(address=contract_registry_address, abi=CONTRACT_REGISTRY_ABI);
+
+	# get collateralizer registry
+	collateralizer_address = contract_registry_contract.functions.collateralizer().call();		
+	collateralizer_contract = web3.eth.contract(address=collateralizer_address, abi=COLLATERALIZER_ABI);
+	
+	# debt_registry_address = contract_registry_contract.functions.debtRegistry().call();
+	# debt_registry_contract = web3.eth.contract(address=debt_registry_address, abi=DEBT_REGISTRY_ABI);
+
+	# collateral_parameters = collateralizer_contract.functions.agreementToCollateralizer(web3.toBytes(hexstr=debt_id)).call();
+	# print(collateral_parameters)
+	collateral_parameters = collateralizer_contract.functions.unpackCollateralParametersFromBytes(web3.toBytes(hexstr=terms_parameters)).call();
+	collateral_token_index = collateral_parameters[0];
+	collateral_token_amount = collateral_parameters[1];
+
+	# print(collateral_parameters);
+	# print(collateralizer_address);
+
+	# get the token registry
+	token_registry_address = contract_registry_contract.functions.tokenRegistry().call();
+	token_registry_contract = web3.eth.contract(address=token_registry_address, abi=TOKEN_REGISTRY_ABI);
+
+	# contract_registry_contract.functions.unpackCollateralParametersFromBytes(terms_parameters.encode('utf-8')).call();		
+
+	# get the principal amount
+	principal_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(principal_token_index).call();	
+	principal_symbol = principal_token_attributes[1];
+	principal_decimals = principal_token_attributes[3];		
+	principal_amount = int(debt_obj["principal_amount"]) / math.pow(10, principal_decimals);
+
+	# get the collateral amount
+	collateral_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(collateral_token_index).call();	
+	collateral_token_symbol = collateral_token_attributes[1];
+	collateral_token_decimals = collateral_token_attributes[3];
+
+	# TODO get price for collateral and estimate
+
+	print(debt_obj);
+	# print(str(principal_amount) + " " + principal_symbol+ " " + str(termLengthInAmortizationUnits) + " " + AMORTIZATION_UNITS[amortizationUnitType] + " for " + str(collateral_token_amount) + " " + collateral_token_symbol + " " + str(principal_interest_rate) + "%");
+
+	return "Hello World";
+
+def scheduleRefreshTask(delay_in_seconds):
+	# schedule the next call to refresh debts here
+	task_client = tasks_v2beta3.CloudTasksClient()
+
+	# Convert "seconds from now" into an rfc3339 datetime string.
+	d = datetime.utcnow() + timedelta(seconds=delay_in_seconds);
+	timestamp = timestamp_pb2.Timestamp();
+	timestamp.FromDatetime(d);
+
+	parent = task_client.queue_path("bloqboard-bot", "us-east1", "my-appengine-queue");
+
+	task = {
+		'app_engine_http_request': {
+			'http_method': 'GET',
+			'relative_uri': '/refreshdebts'
+		},
+		'schedule_time' : timestamp
+	}
+	
+	response = task_client.create_task(parent, task);
+
+	print(response);
+
 @app.route('/')
 def index():
 	return "{}";
-
 
 @app.route('/refreshdebts')
 def refreshdebts():
@@ -111,8 +211,6 @@ def refreshdebts():
 
 		debt_ltv = debt["maxLtv"];
 
-		print(debt_kind + " " + str(debt_creation_seconds));
-
 		debt_obj = {
 			"id" : debt_id,
 			"kind" : debt_kind,
@@ -148,99 +246,20 @@ def refreshdebts():
 	# soon to reduce the queue
 	seconds_before_next_refresh = 60 * 30;
 	
-	# if we have queued debts, start this again in 1 minute
+	# if we have queued debts, start this again soon
 	if (len(queued_debts_to_tweet) > 0):
-		seconds_before_next_refresh = 60;
+		seconds_before_next_refresh = 70; #70 seconds, avoid 60 seconds or less otherwise we could hit the 15 minute window rate limit for application-only auth
 
 	# check the tweet
 	if (debt_to_tweet is None):
 		# nothing to do here, just start the next task queue TODO
 		i = 0;
 	else:
-		debt_id = debt_to_tweet["id"];
-		# get the terms parameters
-		terms_address = debt_to_tweet["terms_address"];
+		status = generateTweetMessageFromDebt(debt_to_tweet);	
 
-		# build the terms contract
-		terms_contract = web3.eth.contract(address=terms_address, abi=COLLATERALIZED_SIMPLE_TERMS_ABI);
-		terms_parameters = debt_to_tweet["terms_params"];
+		tweetStatus(status);		
 
-		# get the principal terms
-		terms_parameters_list = terms_contract.functions.unpackParametersFromBytes(terms_parameters).call();
-
-		principal_token_index = terms_parameters_list[0];
-		principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this
-		amortizationUnitType = terms_parameters_list[3];
-		termLengthInAmortizationUnits = terms_parameters_list[4];
-
-		# get the contract registry
-		contract_registry_address = terms_contract.functions.contractRegistry().call();
-		contract_registry_contract = web3.eth.contract(address=contract_registry_address, abi=CONTRACT_REGISTRY_ABI);
-
-		# get collateralizer registry
-		collateralizer_address = contract_registry_contract.functions.collateralizer().call();		
-		collateralizer_contract = web3.eth.contract(address=collateralizer_address, abi=COLLATERALIZER_ABI);
-		
-		# debt_registry_address = contract_registry_contract.functions.debtRegistry().call();
-		# debt_registry_contract = web3.eth.contract(address=debt_registry_address, abi=DEBT_REGISTRY_ABI);
-
-		# collateral_parameters = collateralizer_contract.functions.agreementToCollateralizer(web3.toBytes(hexstr=debt_id)).call();
-		# print(collateral_parameters)
-		collateral_parameters = collateralizer_contract.functions.unpackCollateralParametersFromBytes(web3.toBytes(hexstr=terms_parameters)).call();
-		collateral_token_index = collateral_parameters[0];
-		collateral_token_amount = collateral_parameters[1];
-
-		# print(collateral_parameters);
-		# print(collateralizer_address);
-
-		# get the token registry
-		token_registry_address = contract_registry_contract.functions.tokenRegistry().call();
-		token_registry_contract = web3.eth.contract(address=token_registry_address, abi=TOKEN_REGISTRY_ABI);
-
-		# contract_registry_contract.functions.unpackCollateralParametersFromBytes(terms_parameters.encode('utf-8')).call();		
-
-		# get the principal amount
-		principal_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(principal_token_index).call();	
-		principal_symbol = principal_token_attributes[1];
-		principal_decimals = principal_token_attributes[3];		
-		principal_amount = int(debt_to_tweet["principal_amount"]) / math.pow(10, principal_decimals);
-
-		# get the collateral amount
-		collateral_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(collateral_token_index).call();	
-		collateral_token_symbol = collateral_token_attributes[1];
-		collateral_token_decimals = collateral_token_attributes[3];
-
-		# TODO get price for collateral and estimate
-
-		print(debt_id);
-		print(str(principal_amount) + " " + principal_symbol+ " " + str(termLengthInAmortizationUnits) + " " + AMORTIZATION_UNITS[amortizationUnitType] + " for " + str(collateral_token_amount) + " " + collateral_token_symbol + " " + str(principal_interest_rate) + "%");
-
-	# TODO tweet here
-			
-
-
-	# schedule the next call to refresh debts here
-	task_client = tasks_v2beta3.CloudTasksClient()
-
-	parent = task_client.queue_path("bloqboard-bot", "us-east1", "my-appengine-queue");
-
-	task = {
-		'app_engine_http_request': {
-			'http_method': 'GET',
-			'relative_uri': '/refreshdebts'
-		}
-	}
-
-	# Convert "seconds from now" into an rfc3339 datetime string.
-	d = datetime.utcnow() + timedelta(seconds=seconds_before_next_refresh);
-	timestamp = timestamp_pb2.Timestamp();
-	timestamp.FromDatetime(d);
-
-	task['schedule_time'] = timestamp;
-	
-	response = task_client.create_task(parent, task);
-
-	print(response);
+	scheduleRefreshTask(seconds_before_next_refresh);
 
 	return "{todo}";
 
