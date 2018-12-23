@@ -43,6 +43,9 @@ DEBT_REGISTRY_ABI = json.loads('[{"constant":true,"inputs":[],"name":"EDIT_CONTE
 CONTRACT_REGISTRY_ABI = json.loads('[{"constant":true,"inputs":[],"name":"debtKernel","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"tokenTransferProxy","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"debtRegistry","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"repaymentRouter","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"collateralizer","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"tokenRegistry","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"contractType","type":"uint8"},{"name":"newAddress","type":"address"}],"name":"updateAddress","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"debtToken","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_collateralizer","type":"address"},{"name":"_debtKernel","type":"address"},{"name":"_debtRegistry","type":"address"},{"name":"_debtToken","type":"address"},{"name":"_repaymentRouter","type":"address"},{"name":"_tokenRegistry","type":"address"},{"name":"_tokenTransferProxy","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"name":"contractType","type":"uint8"},{"indexed":true,"name":"oldAddress","type":"address"},{"indexed":true,"name":"newAddress","type":"address"}],"name":"ContractAddressUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]')
 TOKEN_REGISTRY_ABI = json.loads('[{"constant":true,"inputs":[{"name":"_index","type":"uint256"}],"name":"getTokenAttributesByIndex","outputs":[{"name":"","type":"address"},{"name":"","type":"string"},{"name":"","type":"string"},{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_symbol","type":"string"}],"name":"getTokenIndexBySymbol","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_symbol","type":"string"}],"name":"getTokenAddressBySymbol","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"symbolHashToTokenAttributes","outputs":[{"name":"tokenAddress","type":"address"},{"name":"tokenIndex","type":"uint256"},{"name":"name","type":"string"},{"name":"numDecimals","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_symbol","type":"string"},{"name":"_tokenAddress","type":"address"},{"name":"_tokenName","type":"string"},{"name":"_numDecimals","type":"uint8"}],"name":"setTokenAttributes","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_index","type":"uint256"}],"name":"getTokenAddressByIndex","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_index","type":"uint256"}],"name":"getTokenSymbolByIndex","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_symbol","type":"string"}],"name":"getTokenAttributesBySymbol","outputs":[{"name":"","type":"address"},{"name":"","type":"uint256"},{"name":"","type":"string"},{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_symbol","type":"string"}],"name":"getNumDecimalsFromSymbol","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_index","type":"uint256"}],"name":"getNumDecimalsByIndex","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"tokenSymbolList","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_symbol","type":"string"}],"name":"getTokenNameBySymbol","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"tokenSymbolListLength","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_index","type":"uint256"}],"name":"getTokenNameByIndex","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"previousOwner","type":"address","indexed":true},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event","anonymous":false}]');
 
+# For now just allow CollateralizedSimpleInterestTermsContract. TODO add erc271 terms when they launch, will requre probably some more calls to determine collateral price
+ALLOWED_CONTRACT_TERM_TYPES = ["0x5de2538838b4eb7fa2dbdea09d642b88546e5f20"];
+
 # Dharma
 AMORTIZATION_UNITS = ["HOURS", "DAYS", "WEEKS", "MONTHS", "YEARS" ];
 
@@ -61,15 +64,16 @@ def tweetStatus(status):
 	twitter_consumer_secret = twitter_credentials["twitter_consumer_secret"];
 	twitter_access_token = twitter_credentials["twitter_access_token"];
 	twitter_token_secret = twitter_credentials["twitter_token_secret"];
-	
+
+	print(status);
+
 	# api = twitter.Api(consumer_key=twitter_consumer_key,
  #                  consumer_secret=twitter_consumer_secret,
  #                  access_token_key=twitter_access_token,
  #                  access_token_secret=twitter_token_secret)
 	# api.PostUpdate(status)
 
-def generateTweetMessageFromDebt(debt_obj):
-	debt_id = debt_obj["id"];
+def generateStatusFromDebt(debt_obj):
 	# get the terms parameters
 	terms_address = debt_obj["terms_address"];
 
@@ -81,7 +85,8 @@ def generateTweetMessageFromDebt(debt_obj):
 	terms_parameters_list = terms_contract.functions.unpackParametersFromBytes(terms_parameters).call();
 
 	principal_token_index = terms_parameters_list[0];
-	principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this
+	principal_amount =  terms_parameters_list[1];
+	principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this?
 	amortizationUnitType = terms_parameters_list[3];
 	termLengthInAmortizationUnits = terms_parameters_list[4];
 
@@ -92,42 +97,82 @@ def generateTweetMessageFromDebt(debt_obj):
 	# get collateralizer registry
 	collateralizer_address = contract_registry_contract.functions.collateralizer().call();		
 	collateralizer_contract = web3.eth.contract(address=collateralizer_address, abi=COLLATERALIZER_ABI);
-	
-	# debt_registry_address = contract_registry_contract.functions.debtRegistry().call();
-	# debt_registry_contract = web3.eth.contract(address=debt_registry_address, abi=DEBT_REGISTRY_ABI);
-
-	# collateral_parameters = collateralizer_contract.functions.agreementToCollateralizer(web3.toBytes(hexstr=debt_id)).call();
-	# print(collateral_parameters)
-	collateral_parameters = collateralizer_contract.functions.unpackCollateralParametersFromBytes(web3.toBytes(hexstr=terms_parameters)).call();
-	collateral_token_index = collateral_parameters[0];
-	collateral_token_amount = collateral_parameters[1];
-
-	# print(collateral_parameters);
-	# print(collateralizer_address);
 
 	# get the token registry
 	token_registry_address = contract_registry_contract.functions.tokenRegistry().call();
 	token_registry_contract = web3.eth.contract(address=token_registry_address, abi=TOKEN_REGISTRY_ABI);
 
-	# contract_registry_contract.functions.unpackCollateralParametersFromBytes(terms_parameters.encode('utf-8')).call();		
-
-	# get the principal amount
+	# get the principal token attribuetes
 	principal_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(principal_token_index).call();	
 	principal_symbol = principal_token_attributes[1];
 	principal_decimals = principal_token_attributes[3];		
 	principal_amount = int(debt_obj["principal_amount"]) / math.pow(10, principal_decimals);
 
 	# get the collateral amount
+	collateral_parameters = collateralizer_contract.functions.unpackCollateralParametersFromBytes(web3.toBytes(hexstr=terms_parameters)).call();
+	collateral_token_index = collateral_parameters[0];
+	collateral_token_amount = collateral_parameters[1];
+
+	# get collateral token data
 	collateral_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(collateral_token_index).call();	
 	collateral_token_symbol = collateral_token_attributes[1];
 	collateral_token_decimals = collateral_token_attributes[3];
 
 	# TODO get price for collateral and estimate
 
-	print(debt_obj);
-	# print(str(principal_amount) + " " + principal_symbol+ " " + str(termLengthInAmortizationUnits) + " " + AMORTIZATION_UNITS[amortizationUnitType] + " for " + str(collateral_token_amount) + " " + collateral_token_symbol + " " + str(principal_interest_rate) + "%");
+	string_builder = [];
+	if (debt_obj["kind"] == "LendOffer"):
+		string_builder.append("🚨 Loan Offer:\n\n")
+	else:
+		string_builder.append("🤲 Borrow Request:\n\n")
 
-	return "Hello World";
+	# principal
+	string_builder.append("💸 ");
+	string_builder.append(str(principal_amount));
+	string_builder.append(" $");
+	string_builder.append(principal_symbol);
+	string_builder.append("\n");
+
+	# APR
+	string_builder.append("📈 ");
+	string_builder.append("365%/Year\n");
+
+	# Duration
+	string_builder.append("⏳ ");
+	string_builder.append("1 Day\n\n");
+
+	# Collateral
+	if (debt_obj["kind"] == "LendOffer"):
+		string_builder.append("Required Collateral:\n");
+	else:
+		string_builder.append("Collateral Offered:\n");
+	string_builder.append("💎 ");
+	string_builder.append(str(principal_amount));
+	string_builder.append(" $");
+	string_builder.append(collateral_token_symbol);
+	string_builder.append("\n");
+	string_builder.append("⚖️ ");
+	string_builder.append(" 50");
+	string_builder.append("%\n\n");
+
+	# Total Repay
+	string_builder.append("Total Repay:\n");
+	string_builder.append("💸 ");
+	string_builder.append(str(principal_amount));
+	string_builder.append(" $");
+	string_builder.append(principal_symbol);
+	string_builder.append("\n\n");
+
+	if (debt_obj["kind"] == "LendOffer"):
+		string_builder.append("https://app.bloqboard.com/borrow/");
+	else:
+		string_builder.append("https://app.bloqboard.com/loan/");
+
+	string_builder.append(debt_obj["id"]);
+
+	status = str.join('', string_builder)
+
+	return status;
 
 def scheduleRefreshTask(delay_in_seconds):
 	# schedule the next call to refresh debts here
@@ -148,9 +193,7 @@ def scheduleRefreshTask(delay_in_seconds):
 		'schedule_time' : timestamp
 	}
 	
-	response = task_client.create_task(parent, task);
-
-	print(response);
+	task_client.create_task(parent, task);
 
 @app.route('/')
 def index():
@@ -195,6 +238,8 @@ def refreshdebts():
 
 	queued_debts_to_tweet = [];
 
+	print(debts);
+
 	for debt in debts:
 		debt_id = debt["id"];
 		debt_kind = debt["kind"];
@@ -203,11 +248,14 @@ def refreshdebts():
 		debt_creation_seconds = datetime.strptime(debt_creation_time, '%Y-%m-%dT%H:%M:%S.%f%z').timestamp();
 
 		debt_principal_amount = debt["principalAmount"];
-		debt_principal_address = debt["principalTokenAddress"];
-		debt_terms_address = debt["termsContractAddress"];
+		debt_principal_address = to_checksum_address(debt["principalTokenAddress"]);
+
+		debt_terms_address = to_checksum_address(debt["termsContractAddress"]);
 		debt_terms_params = debt["termsContractParameters"];
 
-		# TODO only accept collateralized simple interest loans
+		# skip over debts that use a terms contract that we don't support yet
+		if ((debt_terms_address.lower() in ALLOWED_CONTRACT_TERM_TYPES) == False):
+			continue;
 
 		debt_ltv = debt["maxLtv"];
 
@@ -217,9 +265,9 @@ def refreshdebts():
 			"creation_time" : debt_creation_seconds,
 			
 			"principal_amount" : debt_principal_amount,
-			"principal_address" : to_checksum_address(debt_principal_address),
+			"principal_address" : debt_principal_address,
 
-			"terms_address" : to_checksum_address(debt_terms_address),
+			"terms_address" : debt_terms_address,
 			"terms_params" : debt_terms_params,
 
 			"ltv" : debt_ltv
@@ -255,7 +303,7 @@ def refreshdebts():
 		# nothing to do here, just start the next task queue TODO
 		i = 0;
 	else:
-		status = generateTweetMessageFromDebt(debt_to_tweet);	
+		status = generateStatusFromDebt(debt_to_tweet);	
 
 		tweetStatus(status);		
 
