@@ -47,6 +47,12 @@ TOKEN_REGISTRY_ABI = json.loads('[{"constant":true,"inputs":[{"name":"_index","t
 ALLOWED_CONTRACT_TERM_TYPES = ["0x5de2538838b4eb7fa2dbdea09d642b88546e5f20"];
 
 # Dharma
+AMORTIZATION_HOUR = 0;
+AMORTIZATION_DAY = 1;
+AMORTIZATION_WEEK = 2;
+AMORTIZATION_MONTH = 3;
+AMORTIZATION_YEAR = 4;
+
 AMORTIZATION_UNITS = ["Hour", "Day", "Week", "Month", "Year" ];
 
 
@@ -118,10 +124,20 @@ def generateStatusFromDebt(debt_obj):
 	collateral_token_symbol = collateral_token_attributes[1];
 	collateral_token_decimals = collateral_token_attributes[3];
 
-	# determine the term duration in days so we can calculate the APR
-	term_duration_in_days = 0;
-	apr_interest_rate = 50;
+	# determine the APR
+	apr_interest_rate = 0;
 
+	if (amortizationUnitType == AMORTIZATION_HOUR): # Hours
+		apr_interest_rate = (8760 / termLengthInAmortizationUnits) * principal_interest_rate;
+	elif (amortizationUnitType == AMORTIZATION_DAY): # Days
+		apr_interest_rate = (365 / termLengthInAmortizationUnits) * principal_interest_rate;
+	elif (amortizationUnitType == AMORTIZATION_WEEK): # Weeks
+		apr_interest_rate = (52 / termLengthInAmortizationUnits) * principal_interest_rate;
+	elif (amortizationUnitType == AMORTIZATION_MONTH): # Months
+		apr_interest_rate = (12 / termLengthInAmortizationUnits) * principal_interest_rate;
+	elif (amortizationUnitType == AMORTIZATION_YEAR): # Years
+		apr_interest_rate = (1 / termLengthInAmortizationUnits) * principal_interest_rate;
+	
 	# TODO get price for collateral and estimate
 
 	string_builder = [];
@@ -139,9 +155,9 @@ def generateStatusFromDebt(debt_obj):
 
 	# APR
 	string_builder.append("📈 ");
-	string_builder.append(str(principal_interest_rate));	
+	string_builder.append(str(round(principal_interest_rate, 2)));
 	string_builder.append("% interest (");
-	string_builder.append(str(apr_interest_rate));
+	string_builder.append(str(round(apr_interest_rate, 2)));
 	string_builder.append("% APR)\n");
 
 	# Duration
