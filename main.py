@@ -1,6 +1,9 @@
 from flask import Flask, current_app
 from google.cloud import datastore
 
+from google.cloud import tasks_v2beta3
+from google.protobuf import timestamp_pb2
+
 import ssl
 import math
 
@@ -8,6 +11,7 @@ import urllib.request
 import urllib.parse
 
 from datetime import datetime
+from datetime import timedelta
 
 from eth_utils import (
     add_0x_prefix,
@@ -133,6 +137,18 @@ def refreshdebts():
 				# else add to a queue to be tweeted afterwards
 				queued_debts_to_tweet.append(debt_obj);
 
+	# update the datastore entity with our last tweeted creation time
+	last_tweeted_obj.update({
+		"last_tweeted_creation_time" : last_tweeted_creation_time
+    })
+	ds.put(last_tweeted_obj)
+
+	# the time to wait before calling refreshDebts again.
+	# if we have no debt to tweet, then we can take normal time, otherwise if there's queued debts then we need to call again 
+	# soon to reduce the queue
+	seconds_before_next_refresh = 10;
+
+	# check the tweet
 	if (debt_to_tweet is None):
 		# nothing to do here, just start the next task queue TODO
 		i = 0;
@@ -197,15 +213,33 @@ def refreshdebts():
 		print(debt_id);
 		print(str(principal_amount) + " " + principal_symbol+ " " + str(termLengthInAmortizationUnits) + " " + AMORTIZATION_UNITS[amortizationUnitType] + " for " + str(collateral_token_amount) + " " + collateral_token_symbol + " " + str(principal_interest_rate) + "%");
 
-	# update the datastore entity with our last tweeted creation time
-	last_tweeted_obj.update({
-		"last_tweeted_creation_time" : last_tweeted_creation_time
-    })
-	ds.put(last_tweeted_obj)	
+	# TODO tweet here
 			
 
 
-	# TODO Call web3 to find out terms
+	# schedule the next call to refresh debts here
+	task_client = tasks_v2beta3.CloudTasksClient()
+
+	parent = task_client.queue_path("bloqboard-bot", "us-east1", "my-appengine-queue");
+
+	task = {
+		'app_engine_http_request': {
+			'http_method': 'GET',
+			'relative_uri': '/refreshdebts'
+		}
+	}
+
+	# Convert "seconds from now" into an rfc3339 datetime string.
+	d = datetime.utcnow() + timedelta(seconds=seconds_before_next_refresh);
+	timestamp = timestamp_pb2.Timestamp();
+	timestamp.FromDatetime(d);
+
+	task['schedule_time'] = timestamp;
+	
+	response = task_client.create_task(parent, task);
+
+	print(response);
+
 	return "{todo}";
 
 if __name__ == '__main__':
