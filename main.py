@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, current_app
+from google.cloud import datastore
 
 import ssl
 import math
@@ -57,7 +58,24 @@ def refreshdebts():
 	ctx.check_hostname = False
 	ctx.verify_mode = ssl.CERT_NONE
 
-	last_tweeted_creation_time = 1543946941.429;
+	last_tweeted_creation_time = 0;
+
+	# Pull the last time we tweeted
+	last_tweeted_obj = None;
+	
+	ds = datastore.Client()
+	
+	query = ds.query(kind='LastTweeted');
+
+	query_iterator = query.fetch();
+	for entity in query_iterator:
+		last_tweeted_obj = entity;
+		break;
+
+	if (last_tweeted_obj is None):
+		last_tweeted_obj = datastore.Entity(key=ds.key('LastTweeted'));
+	else:
+		last_tweeted_creation_time = last_tweeted_obj["last_tweeted_creation_time"];
 
 	# call bloqboard API to get the latest offers, filter for SignedBy creditor or debtor and sort by 100 newest created
 	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByCreditor,SignedByDebtor&sortBy=CreationTime&sortOrder=Desc&limit=100'
@@ -110,6 +128,7 @@ def refreshdebts():
 			# check if we should tweet this one
 			if (debt_to_tweet is None):
 				debt_to_tweet = debt_obj;
+				last_tweeted_creation_time = debt_creation_seconds;
 			else:
 				# else add to a queue to be tweeted afterwards
 				queued_debts_to_tweet.append(debt_obj);
@@ -131,7 +150,7 @@ def refreshdebts():
 		print(terms_parameters_list);
 
 		principal_token_index = terms_parameters_list[0];
-		principal_interest_rate = terms_parameters_list[2] / 10000;
+		principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this
 		amortizationUnitType = terms_parameters_list[3];
 		termLengthInAmortizationUnits = terms_parameters_list[4];
 
@@ -153,7 +172,7 @@ def refreshdebts():
 		collateral_token_index = collateral_parameters[0];
 		collateral_token_amount = collateral_parameters[1];
 
-		print(collateral_parameters);
+		# print(collateral_parameters);
 		# print(collateralizer_address);
 
 		# get the token registry
@@ -172,21 +191,17 @@ def refreshdebts():
 		collateral_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(collateral_token_index).call();	
 		collateral_token_symbol = collateral_token_attributes[1];
 		collateral_token_decimals = collateral_token_attributes[3];
-		# print(collateral_token_attributes);
 
+		# TODO get price for collateral and estimate
+
+		print(debt_id);
 		print(str(principal_amount) + " " + principal_symbol+ " " + str(termLengthInAmortizationUnits) + " " + AMORTIZATION_UNITS[amortizationUnitType] + " for " + str(collateral_token_amount) + " " + collateral_token_symbol + " " + str(principal_interest_rate) + "%");
 
-		# # parse out the terms parameters
-		
-		# # principal_amount = terms_parameters_list[1];
-		# 
-		# 
-		# 
-
-		# print(terms_parameters_list);
-
-		# # go get the debt term parameters
-		# print(str(principal_amount) + " " + str(symbol) + " ");
+	# update the datastore entity with our last tweeted creation time
+	last_tweeted_obj.update({
+		"last_tweeted_creation_time" : last_tweeted_creation_time
+    })
+	ds.put(last_tweeted_obj)	
 			
 
 
