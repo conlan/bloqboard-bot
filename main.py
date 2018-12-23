@@ -146,7 +146,11 @@ def refreshdebts():
 	# the time to wait before calling refreshDebts again.
 	# if we have no debt to tweet, then we can take normal time, otherwise if there's queued debts then we need to call again 
 	# soon to reduce the queue
-	seconds_before_next_refresh = 10;
+	seconds_before_next_refresh = 60 * 30;
+	
+	# if we have queued debts, start this again in 1 minute
+	if (len(queued_debts_to_tweet) > 0):
+		seconds_before_next_refresh = 60;
 
 	# check the tweet
 	if (debt_to_tweet is None):
@@ -163,7 +167,6 @@ def refreshdebts():
 
 		# get the principal terms
 		terms_parameters_list = terms_contract.functions.unpackParametersFromBytes(terms_parameters).call();
-		print(terms_parameters_list);
 
 		principal_token_index = terms_parameters_list[0];
 		principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this
@@ -181,7 +184,6 @@ def refreshdebts():
 		# debt_registry_address = contract_registry_contract.functions.debtRegistry().call();
 		# debt_registry_contract = web3.eth.contract(address=debt_registry_address, abi=DEBT_REGISTRY_ABI);
 
-		print(terms_parameters);
 		# collateral_parameters = collateralizer_contract.functions.agreementToCollateralizer(web3.toBytes(hexstr=debt_id)).call();
 		# print(collateral_parameters)
 		collateral_parameters = collateralizer_contract.functions.unpackCollateralParametersFromBytes(web3.toBytes(hexstr=terms_parameters)).call();
