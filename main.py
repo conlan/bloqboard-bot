@@ -259,12 +259,15 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append(principal_token_symbol);
 	string_builder.append("\n\n🔗 ");
 
-	if (debt_obj["kind"] == KIND_LOAN_OFFER):
-		string_builder.append("https://app.bloqboard.com/borrow/");
-	else:
-		string_builder.append("https://app.bloqboard.com/loan/");
+	# if (debt_obj["kind"] == KIND_LOAN_OFFER):
+	# 	string_builder.append("https://app.bloqboard.com/borrow/");
+	# else:
+	# 	string_builder.append("https://app.bloqboard.com/loan/");
 
-	string_builder.append(debt_obj["id"]);
+	# string_builder.append(debt_obj["id"]);
+
+	# Can't link directly to the loan for compliance, check back when it's allowed
+	string_builder.append("https://app.bloqboard.com/");
 
 	status = str.join('', string_builder)
 
