@@ -82,8 +82,10 @@ def tweetStatus(status):
 	api.PostUpdate(status)
 
 def stripTrailingZerosFromDecimal(decimal):
-	decimal = decimal.rstrip("0");
-	decimal = decimal.rstrip(".");
+	# only strip trailing 0s and periodss if there's a period in the decimal. Otherwise don't bother, ie 40% -> 4%
+	if ("." in decimal):
+		decimal = decimal.rstrip("0");
+		decimal = decimal.rstrip(".");
 
 	return decimal;
 
@@ -276,8 +278,11 @@ def scheduleRefreshTask(delay_in_seconds):
 	d = datetime.utcnow() + timedelta(seconds=delay_in_seconds);
 	timestamp = timestamp_pb2.Timestamp();
 	timestamp.FromDatetime(d);
-
+	
 	parent = task_client.queue_path("bloqboard-bot", "us-east1", "my-appengine-queue");
+
+	# purge the current queue in case this endpoint gets called multiple times in a row
+	task_client.purge_queue(parent);
 
 	task = {
 		'app_engine_http_request': {
