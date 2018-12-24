@@ -222,9 +222,9 @@ def generateStatusFromDebt(debt_obj):
 
 	# APR
 	string_builder.append("📈 ");
-	string_builder.append(str(principal_interest_rate));
+	string_builder.append(stripTrailingZerosFromDecimalstr(principal_interest_rate));
 	string_builder.append("% interest (");
-	string_builder.append(str(apr_interest_rate));
+	string_builder.append(stripTrailingZerosFromDecimalstr(apr_interest_rate));
 	string_builder.append("% APR)");
 
 
