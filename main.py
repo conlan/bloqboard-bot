@@ -281,9 +281,6 @@ def scheduleRefreshTask(delay_in_seconds):
 	
 	parent = task_client.queue_path("bloqboard-bot", "us-east1", "my-appengine-queue");
 
-	# purge the current queue in case this endpoint gets called multiple times in a row
-	task_client.purge_queue(parent);
-
 	task = {
 		'app_engine_http_request': {
 			'http_method': 'GET',
