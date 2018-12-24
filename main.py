@@ -55,6 +55,8 @@ AMORTIZATION_YEAR = 4;
 
 AMORTIZATION_UNITS = ["Hour", "Day", "Week", "Month", "Year" ];
 
+KIND_LOAN_OFFER = "LendOffer";
+
 
 # Provider
 providerURL = "https://chainkit-1.dev.kyokan.io/eth";
@@ -110,7 +112,7 @@ def generateStatusFromDebt(debt_obj):
 
 	# get the principal token attribuetes
 	principal_token_attributes = token_registry_contract.functions.getTokenAttributesByIndex(principal_token_index).call();	
-	principal_symbol = principal_token_attributes[1];
+	principal_token_symbol = principal_token_attributes[1];
 	principal_decimals = principal_token_attributes[3];		
 	principal_amount = int(debt_obj["principal_amount"]) / math.pow(10, principal_decimals);
 
@@ -140,14 +142,47 @@ def generateStatusFromDebt(debt_obj):
 
 	# determine the total repay amount
 	apr_interest_rate = round(apr_interest_rate, 2);
-	principal_interest_rate = round(principal_interest_rate, 2)
 
 	total_repay_amount = principal_amount + (principal_amount * (principal_interest_rate / 100));
+
+	principal_interest_rate = round(principal_interest_rate, 2)
+
+	# calculate the collateral required
+	# first determine the collateral amount in terms of principal
+	collateral_required_in_principal = (100.0 / debt_obj["ltv"]) * principal_amount;
 	
-	# TODO get price for collateral and estimate
+	# then find out the price for the collateral to principal
+	principal_token_symbol_to_query = "";
+
+	if (principal_token_symbol == "WETH"):
+		principal_token_symbol_to_query = "ETH"
+	else:
+		principal_token_symbol_to_query = principal_token_symbol;
+
+	collateral_token_symbol_to_query = "";
+
+	if (collateral_token_symbol_to_query == "WETH"):
+		collateral_token_symbol_to_query = "ETH";
+	else:
+		collateral_token_symbol_to_query = collateral_token_symbol;
+
+	url = "https://min-api.cryptocompare.com/data/price?fsym=" + principal_token_symbol_to_query + "&tsyms=" + collateral_token_symbol_to_query;
+	
+	print(url);
+	
+	f = urllib.request.urlopen(url);
+	priceData = json.loads(f.read().decode('utf-8'));
+	
+	print(priceData);
+
+	collateral_price_rate = priceData[collateral_token_symbol_to_query];
+
+	collateral_required = round(collateral_required_in_principal * collateral_price_rate, 2);
+
+	# print(collateral_required_in_eth)
 
 	string_builder = [];
-	if (debt_obj["kind"] == "LendOffer"):
+	if (debt_obj["kind"] == KIND_LOAN_OFFER):
 		string_builder.append("🚨 Loan Offer:\n\n")
 	else:
 		string_builder.append("🤲 Borrow Request:\n\n")
@@ -156,7 +191,7 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append("💸 ");
 	string_builder.append(str(principal_amount));
 	string_builder.append(" $");
-	string_builder.append(principal_symbol);
+	string_builder.append(principal_token_symbol);
 	string_builder.append("\n");
 
 	# Duration
@@ -180,12 +215,12 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append("\n\n");
 
 	# Collateral
-	if (debt_obj["kind"] == "LendOffer"):
+	if (debt_obj["kind"] == KIND_LOAN_OFFER):
 		string_builder.append("Required Collateral:\n");
 	else:
 		string_builder.append("Collateral Offered:\n");
-	string_builder.append("💎 ");
-	string_builder.append(str(principal_amount));
+	string_builder.append("💎 ~");
+	string_builder.append(str(collateral_required));
 	string_builder.append(" $");
 	string_builder.append(collateral_token_symbol);
 	string_builder.append("\n");
@@ -198,10 +233,10 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append("💸 ");
 	string_builder.append(str(total_repay_amount));
 	string_builder.append(" $");
-	string_builder.append(principal_symbol);
-	string_builder.append("\n\n");
+	string_builder.append(principal_token_symbol);
+	string_builder.append("\n\n🔗 ");
 
-	if (debt_obj["kind"] == "LendOffer"):
+	if (debt_obj["kind"] == KIND_LOAN_OFFER):
 		string_builder.append("https://app.bloqboard.com/borrow/");
 	else:
 		string_builder.append("https://app.bloqboard.com/loan/");
@@ -312,8 +347,8 @@ def refreshdebts():
 		}
 
 		# if this debt was created after our last tweeted debt
-		if (debt_id == "0x3da2e98463515ce51c585ccca0f15cd608496fac48f4ca1270c6170b679d1038"): #TODO remove
-		# if (debt_creation_seconds > last_tweeted_creation_time):
+		# if (debt_id == "0x3da2e98463515ce51c585ccca0f15cd608496fac48f4ca1270c6170b679d1038"): #TODO remove
+		if (debt_creation_seconds > last_tweeted_creation_time):
 			# check if we should tweet this one
 			if (debt_to_tweet is None):
 				debt_to_tweet = debt_obj;
@@ -326,12 +361,12 @@ def refreshdebts():
 	last_tweeted_obj.update({
 		"last_tweeted_creation_time" : last_tweeted_creation_time
     })
-	# ds.put(last_tweeted_obj)
+	ds.put(last_tweeted_obj)
 
 	# the time to wait before calling refreshDebts again.
 	# if we have no debt to tweet, then we can take normal time, otherwise if there's queued debts then we need to call again 
 	# soon to reduce the queue
-	seconds_before_next_refresh = 60 * 30;
+	seconds_before_next_refresh = 60 * 15;
 	
 	# if we have queued debts, start this again soon
 	if (len(queued_debts_to_tweet) > 0):
