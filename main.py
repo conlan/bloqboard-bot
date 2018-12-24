@@ -247,7 +247,7 @@ def generateStatusFromDebt(debt_obj):
 	string_builder.append("\n");
 	string_builder.append("⚖️ ");
 	string_builder.append(stripTrailingZerosFromDecimal(str(debt_obj["ltv"])));
-	string_builder.append("%\n\n");
+	string_builder.append("% LTV\n\n");
 
 	# Total Repay
 	string_builder.append("Total Repay:\n");
