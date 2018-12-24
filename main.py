@@ -81,6 +81,12 @@ def tweetStatus(status):
  #                  access_token_secret=twitter_token_secret)
 	# api.PostUpdate(status)
 
+def stripTrailingZerosFromDecimal(decimal):
+	decimal = decimal.rstrip("0");
+	decimal = decimal.rstrip(".");
+
+	return decimal;
+
 def generateStatusFromDebt(debt_obj):
 	# get the terms parameters
 	terms_address = debt_obj["terms_address"];
@@ -194,13 +200,13 @@ def generateStatusFromDebt(debt_obj):
 	string_builder = [];
 
 	if (debt_obj["kind"] == KIND_LOAN_OFFER):
-		string_builder.append("🚨 Loan Offer:\n\n")
+		string_builder.append("🚨 Loan Offer:\n")
 	else:
-		string_builder.append("🤲 Borrow Request:\n\n")
+		string_builder.append("🤲 Borrow Request:\n")
 
 	# principal
 	string_builder.append("💸 ");
-	string_builder.append(str(principal_amount));
+	string_builder.append(stripTrailingZerosFromDecimal(str(principal_amount)));
 	string_builder.append(" $");
 	string_builder.append(principal_token_symbol);
 	string_builder.append("\n");
@@ -233,13 +239,14 @@ def generateStatusFromDebt(debt_obj):
 	else:
 		string_builder.append("Collateral Supplied:\n");
 		string_builder.append("💎 ");
-		string_builder.append(str(collateral_supplied));
+		string_builder.append(stripTrailingZerosFromDecimal(str(collateral_supplied)));
+			# str(collateral_supplied));
 
 	string_builder.append(" $");
 	string_builder.append(collateral_token_symbol);
 	string_builder.append("\n");
-	string_builder.append("⚖️");
-	string_builder.append(str(debt_obj["ltv"]));
+	string_builder.append("⚖️ ");
+	string_builder.append(stripTrailingZerosFromDecimal(str(debt_obj["ltv"])));
 	string_builder.append("%\n\n");
 
 	# Total Repay
@@ -312,7 +319,7 @@ def refreshdebts():
 		last_tweeted_creation_time = last_tweeted_obj["last_tweeted_creation_time"];
 
 	# call bloqboard API to get the latest offers, filter for SignedBy creditor or debtor and sort by 100 newest created
-	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByDebtor&sortBy=CreationTime&sortOrder=Desc&limit=100'
+	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByDebtor&sortBy=CreationTime&sortOrder=Desc&limit=100'#&status=SignedByCreditor
 	f = urllib.request.urlopen(url, context=ctx)
 
 	debts = json.loads(f.read().decode('utf-8'));
@@ -345,7 +352,7 @@ def refreshdebts():
 			continue;
 
 		if ("maxLtv" in debt):
-			debt_ltv = debt["maxLtv"];
+			debt_ltv = int(round(debt["maxLtv"]));
 		else:
 			debt_ltv = 0;
 
@@ -390,7 +397,7 @@ def refreshdebts():
 
 	# check the tweet
 	if (debt_to_tweet is None):
-		# nothing to do here, just start the next task queue TODO
+		# nothing to do here, just start the next task queue
 		i = 0;
 	else:
 		status = generateStatusFromDebt(debt_to_tweet);	
