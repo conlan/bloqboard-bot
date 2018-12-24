@@ -75,11 +75,11 @@ def tweetStatus(status):
 
 	print(status);
 
-	# api = twitter.Api(consumer_key=twitter_consumer_key,
- #                  consumer_secret=twitter_consumer_secret,
- #                  access_token_key=twitter_access_token,
- #                  access_token_secret=twitter_token_secret)
-	# api.PostUpdate(status)
+	api = twitter.Api(consumer_key=twitter_consumer_key,
+                  consumer_secret=twitter_consumer_secret,
+                  access_token_key=twitter_access_token,
+                  access_token_secret=twitter_token_secret)
+	api.PostUpdate(status)
 
 def stripTrailingZerosFromDecimal(decimal):
 	decimal = decimal.rstrip("0");
@@ -100,7 +100,7 @@ def generateStatusFromDebt(debt_obj):
 
 	principal_token_index = terms_parameters_list[0];
 	principal_amount =  terms_parameters_list[1];
-	principal_interest_rate = terms_parameters_list[2] / 10000; # TODO reconsider this?
+	principal_interest_rate = terms_parameters_list[2] / 10000;
 	amortizationUnitType = terms_parameters_list[3];
 	termLengthInAmortizationUnits = terms_parameters_list[4];
 
@@ -404,9 +404,9 @@ def refreshdebts():
 
 		tweetStatus(status);		
 
-	# scheduleRefreshTask(seconds_before_next_refresh); TODO
+	scheduleRefreshTask(seconds_before_next_refresh);
 
-	return "{todo}";
+	return "{done}";
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
