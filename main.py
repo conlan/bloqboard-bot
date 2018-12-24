@@ -147,27 +147,31 @@ def generateStatusFromDebt(debt_obj):
 
 	principal_interest_rate = round(principal_interest_rate, 2)
 
-	# determine the symbols to use for querying prices (ie WETH -> ETH)
-	if (principal_token_symbol == "WETH"):
-		principal_token_symbol_to_query = "ETH"
+	# check if principal token is same as collateral (ie WETH for WETH) No need to query price
+	if (principal_token_symbol == collateral_token_symbol):
+		collateral_price_rate = 1;
 	else:
-		principal_token_symbol_to_query = principal_token_symbol;
+		# determine the symbols to use for querying prices (ie WETH -> ETH)
+		if (principal_token_symbol == "WETH"):
+			principal_token_symbol_to_query = "ETH"
+		else:
+			principal_token_symbol_to_query = principal_token_symbol;
 
-	if (collateral_token_symbol == "WETH"):
-		collateral_token_symbol_to_query = "ETH";
-	else:
-		collateral_token_symbol_to_query = collateral_token_symbol;
+		if (collateral_token_symbol == "WETH"):
+			collateral_token_symbol_to_query = "ETH";
+		else:
+			collateral_token_symbol_to_query = collateral_token_symbol;
 
-	url = "https://min-api.cryptocompare.com/data/price?fsym=" + principal_token_symbol_to_query + "&tsyms=" + collateral_token_symbol_to_query;
+		url = "https://min-api.cryptocompare.com/data/price?fsym=" + principal_token_symbol_to_query + "&tsyms=" + collateral_token_symbol_to_query;
+			
+		print(url);
 		
-	print(url);
-	
-	f = urllib.request.urlopen(url);
-	priceData = json.loads(f.read().decode('utf-8'));
-	
-	print(priceData);
+		f = urllib.request.urlopen(url);
+		priceData = json.loads(f.read().decode('utf-8'));
+		
+		print(priceData);
 
-	collateral_price_rate = priceData[collateral_token_symbol_to_query];
+		collateral_price_rate = priceData[collateral_token_symbol_to_query];
 
 	if (debt_obj["kind"] == KIND_LOAN_OFFER):
 		# calculate the collateral required
@@ -321,7 +325,7 @@ def refreshdebts():
 
 	queued_debts_to_tweet = [];
 
-	# print(debts); TODO uncomment
+	print(debts);
 
 	for debt in debts:
 		debt_id = debt["id"];
@@ -360,7 +364,6 @@ def refreshdebts():
 		}
 
 		# if this debt was created after our last tweeted debt
-		# if (debt_id == "0x3da2e98463515ce51c585ccca0f15cd608496fac48f4ca1270c6170b679d1038"): #TODO remove
 		if (debt_creation_seconds > last_tweeted_creation_time):
 			# check if we should tweet this one
 			if (debt_to_tweet is None):
