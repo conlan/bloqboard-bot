@@ -319,7 +319,7 @@ def refreshdebts():
 		last_tweeted_creation_time = last_tweeted_obj["last_tweeted_creation_time"];
 
 	# call bloqboard API to get the latest offers, filter for SignedBy creditor or debtor and sort by 100 newest created
-	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByDebtor&sortBy=CreationTime&sortOrder=Desc&limit=100'#&status=SignedByCreditor
+	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByDebtor&sortBy=CreationTime&status=SignedByCreditor&sortOrder=Desc&limit=100'
 	f = urllib.request.urlopen(url, context=ctx)
 
 	debts = json.loads(f.read().decode('utf-8'));
