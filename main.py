@@ -147,27 +147,19 @@ def generateStatusFromDebt(debt_obj):
 
 	principal_interest_rate = round(principal_interest_rate, 2)
 
-	# calculate the collateral required
-	# first determine the collateral amount in terms of principal
-	collateral_required_in_principal = (100.0 / debt_obj["ltv"]) * principal_amount;
-	
-	# then find out the price for the collateral to principal
-	principal_token_symbol_to_query = "";
-
+	# determine the symbols to use for querying prices (ie WETH -> ETH)
 	if (principal_token_symbol == "WETH"):
 		principal_token_symbol_to_query = "ETH"
 	else:
 		principal_token_symbol_to_query = principal_token_symbol;
 
-	collateral_token_symbol_to_query = "";
-
-	if (collateral_token_symbol_to_query == "WETH"):
+	if (collateral_token_symbol == "WETH"):
 		collateral_token_symbol_to_query = "ETH";
 	else:
 		collateral_token_symbol_to_query = collateral_token_symbol;
 
 	url = "https://min-api.cryptocompare.com/data/price?fsym=" + principal_token_symbol_to_query + "&tsyms=" + collateral_token_symbol_to_query;
-	
+		
 	print(url);
 	
 	f = urllib.request.urlopen(url);
@@ -177,11 +169,26 @@ def generateStatusFromDebt(debt_obj):
 
 	collateral_price_rate = priceData[collateral_token_symbol_to_query];
 
-	collateral_required = round(collateral_required_in_principal * collateral_price_rate, 2);
+	if (debt_obj["kind"] == KIND_LOAN_OFFER):
+		# calculate the collateral required
+		# first determine the collateral amount in terms of principal
+		collateral_required_in_principal = (100.0 / debt_obj["ltv"]) * principal_amount;
+		
+		# then find out the price for the collateral to principal
+		collateral_required = round(collateral_required_in_principal * collateral_price_rate, 2);
+	else:	
+		collateral_supplied = collateral_token_amount / math.pow(10, collateral_token_decimals);
+		
+		# calculate the loan to value ratio
+		collateral_supplied_in_principal = collateral_supplied / collateral_price_rate;
 
-	# print(collateral_required_in_eth)
+		loan_to_value_ratio = round(principal_amount / collateral_supplied_in_principal * 100, 2);
+
+		debt_obj["ltv"] = loan_to_value_ratio;
+
 
 	string_builder = [];
+
 	if (debt_obj["kind"] == KIND_LOAN_OFFER):
 		string_builder.append("🚨 Loan Offer:\n\n")
 	else:
@@ -217,10 +224,13 @@ def generateStatusFromDebt(debt_obj):
 	# Collateral
 	if (debt_obj["kind"] == KIND_LOAN_OFFER):
 		string_builder.append("Required Collateral:\n");
+		string_builder.append("💎 ~");
+		string_builder.append(str(collateral_required));
 	else:
-		string_builder.append("Collateral Offered:\n");
-	string_builder.append("💎 ~");
-	string_builder.append(str(collateral_required));
+		string_builder.append("Collateral Supplied:\n");
+		string_builder.append("💎 ");
+		string_builder.append(str(collateral_supplied));
+
 	string_builder.append(" $");
 	string_builder.append(collateral_token_symbol);
 	string_builder.append("\n");
@@ -298,7 +308,7 @@ def refreshdebts():
 		last_tweeted_creation_time = last_tweeted_obj["last_tweeted_creation_time"];
 
 	# call bloqboard API to get the latest offers, filter for SignedBy creditor or debtor and sort by 100 newest created
-	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByCreditor,SignedByDebtor&sortBy=CreationTime&sortOrder=Desc&limit=100'
+	url = 'https://api.bloqboard.com/api/v1/debts?status=SignedByDebtor&sortBy=CreationTime&sortOrder=Desc&limit=100'
 	f = urllib.request.urlopen(url, context=ctx)
 
 	debts = json.loads(f.read().decode('utf-8'));
@@ -330,7 +340,10 @@ def refreshdebts():
 		if ((debt_terms_address.lower() in ALLOWED_CONTRACT_TERM_TYPES) == False):
 			continue;
 
-		debt_ltv = debt["maxLtv"];
+		if ("maxLtv" in debt):
+			debt_ltv = debt["maxLtv"];
+		else:
+			debt_ltv = 0;
 
 		debt_obj = {
 			"id" : debt_id,
