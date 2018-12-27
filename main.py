@@ -45,6 +45,7 @@ TOKEN_REGISTRY_ABI = json.loads('[{"constant":true,"inputs":[{"name":"_index","t
 
 # For now just allow CollateralizedSimpleInterestTermsContract. TODO add erc271 terms when they launch, will requre probably some more calls to determine collateral price
 ALLOWED_CONTRACT_TERM_TYPES = ["0x5de2538838b4eb7fa2dbdea09d642b88546e5f20"];
+MINIMUM_PRINCIPAL_AMOUNTS = json.loads('{"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359":1000000000000000000,"0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2":10000000000000000,"0xE41d2489571d322189246DaFA5ebDe1F4699F498":5000000000000000000,"0x0D8775F648430679A709E98d2b0Cb6250d2887EF":5000000000000000000,"0x1985365e9f78359a9B6AD760e32412f4a445E862":1000000000000000000}');
 
 # Dharma
 AMORTIZATION_HOUR = 0;
@@ -361,22 +362,33 @@ def refreshdebts():
 		else:
 			debt_ltv = 0;
 
-		debt_obj = {
-			"id" : debt_id,
-			"kind" : debt_kind,
-			"creation_time" : debt_creation_seconds,
-			
-			"principal_amount" : debt_principal_amount,
-			"principal_address" : debt_principal_address,
-
-			"terms_address" : debt_terms_address,
-			"terms_params" : debt_terms_params,
-
-			"ltv" : debt_ltv
-		}
-
 		# if this debt was created after our last tweeted debt
 		if (debt_creation_seconds > last_tweeted_creation_time):
+			# check the principal amount against the minimum required amount to tweet (filter out test loans)
+			if (debt_principal_address in MINIMUM_PRINCIPAL_AMOUNTS):
+				minimum_amount_required = MINIMUM_PRINCIPAL_AMOUNTS[debt_principal_address];
+
+				# skip over this loan since the principal amount is less than what we require
+				if (int(debt_principal_amount) < minimum_amount_required):
+					print("skipping " + debt_principal_address + " for too low amount: " + str(debt_principal_amount));
+					continue;
+			else:
+				continue; # don't tweet principal loans that we don't have a minimum set for
+
+			debt_obj = {
+				"id" : debt_id,
+				"kind" : debt_kind,
+				"creation_time" : debt_creation_seconds,
+				
+				"principal_amount" : debt_principal_amount,
+				"principal_address" : debt_principal_address,
+
+				"terms_address" : debt_terms_address,
+				"terms_params" : debt_terms_params,
+
+				"ltv" : debt_ltv
+			}
+
 			# check if we should tweet this one
 			if (debt_to_tweet is None):
 				debt_to_tweet = debt_obj;
